@@ -64,10 +64,10 @@ def answer_with_context(query: str,context: str,history: Optional[list[dict]] = 
         ))
     ])
 
-    logger.info("QUERY:", query)
-    logger.info("CONTEXT:", context[:200])  
-    logger.info("HISTORY:", history)
-    logger.info("PROMPT:", prompt)
+    logger.info(f"QUERY: {query}")
+    logger.info(f"CONTEXT: {context}")  
+    logger.info(f"HISTORY: {history}")
+    logger.info(f"PROMPT: {prompt}")
 
     #Chain pipeline
     chain = prompt | llm   
@@ -110,7 +110,7 @@ def summarise_history(history: list[dict]) -> str:
         )
     ])
 
-    logger.info("HISTORY:", history)
+    logger.info(f"HISTORY: {history}")
 
     #Chain
     summarise_chain = summarise_prompt | llm | StrOutputParser()

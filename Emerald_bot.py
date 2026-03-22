@@ -137,10 +137,10 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         sessions.add_turn(user_id, "assistant", answer)
 
         #format response with source attribution
-        source_line = "*Sources:* " + ", ".join(f"{s}" for s in sources)
+        source_line = "Sources: " + ", ".join(f"{s}" for s in sources)
         reply = f"{answer}\n\n{source_line}"
 
-        await update.message.reply_text(reply, parse_mode="Markdown")
+        await update.message.reply_text(reply)
 
     except Exception as exc:
         logger.exception("Error in /ask handler")
