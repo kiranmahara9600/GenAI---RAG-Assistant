@@ -85,7 +85,13 @@ def init_db(db_path: str = DB_PATH) -> None:
             result_json TEXT  NOT NULL,
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS sessions (
+            user_id     TEXT PRIMARY KEY,
+            history     TEXT NOT NULL DEFAULT '[]'
+        );               
     """)
+    
     conn.commit()
     conn.close()
     logger.info("Database initialised.")
@@ -124,7 +130,7 @@ def index_documents(docs_dir: str = "Knowledge Base", db_path: str = DB_PATH) ->
     model = get_embedder()
     inserted = 0
 
-    for fpath in sorted(Path(docs_dir)): 
+    for fpath in sorted(Path(docs_dir).glob("**/*")): 
         if fpath.suffix not in {".md", ".txt"}:
             continue
         doc_name = fpath.name
@@ -136,12 +142,15 @@ def index_documents(docs_dir: str = "Knowledge Base", db_path: str = DB_PATH) ->
 
             #check if chunk already stored
             exists = conn.execute(
-                f"SELECT 1 FROM chunks WHERE content_hash = {content_hash}"
-            )#.fetchone()
+                f"SELECT 1 FROM chunks WHERE content_hash = ?", (content_hash,)
+            ).fetchone()
+
             if exists:
+                logger.info("Chunk is already embedded")
                 continue
 
-            vec = model.encode(chunk, normalize_embeddings=True)
+            vec = np.array(model.embed_documents([chunk])[0], dtype=np.float32)
+            
             conn.execute(
                 """INSERT INTO chunks (doc_name, chunk_index, content, content_hash, embedding)
                    VALUES (?, ?, ?, ?, ?)""",
@@ -178,14 +187,15 @@ def retrieve(query: str, top_k: int = TOP_K, db_path: str = DB_PATH) -> list[dic
 
     #cache
     cached = conn.execute(
-        f"SELECT result_json FROM query_cache WHERE query_hash = {query_hash}"
-    )#.fetchone()
+        "SELECT result_json FROM query_cache WHERE query_hash = ?", (query_hash,)
+    ).fetchone()
     if cached:
         logger.info("Cache available for query.")
         conn.close()
         return json.loads(cached["result_json"])
 
     #embed the query
+    logger.info("Cache not available for query, craeting new embeddings")
     model = get_embedder()
     q_vec = np.array(model.embed_query(query), dtype=np.float32)
 
@@ -203,7 +213,7 @@ def retrieve(query: str, top_k: int = TOP_K, db_path: str = DB_PATH) -> list[dic
 
     scored.sort(key=lambda x: x["score"], reverse=True)
     results = scored[:top_k]
-    print(results)
+    logger.info(f'Retrieved Context: {results}')
 
     #store in cache
     conn.execute(
