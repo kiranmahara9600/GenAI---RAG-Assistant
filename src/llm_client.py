@@ -131,5 +131,55 @@ def summarise_history(history: list[dict]) -> str:
     return summary
 
 
+        
+#--------------------------------------------------------------------------------------
+#VISION MODEL
+#--------------------------------------------------------------------------------------
+
+#visionmodel initialisation
+vision_llm = ChatOpenAI(
+        model=MODEL,
+        max_tokens=MAX_TOKENS,
+        temperature=TEMPERATURE,
+        api_key=os.environ.get("OPENAI_API_KEY", ""),
+)
+
+#to describe user image
+def describe_image(image_bytes: bytearray) -> str:
+    """
+    Takes raw image bytes and returns a detailed description using GPT-4o Vision
+    """
+
+    #convert raw bytes to base64 string
+    """OpenAI's Vision API accepts images as URLs or as base64-encoded strings. Since our image is in memory (not hosted anywhere), we use base64.
+        Base64 converts raw binary bytes into a text-safe string:"""
+    b64 = base64.b64encode(image_bytes).decode()
+
+    #build a HumanMessage with both image and text - it contains list of objs
+    message = HumanMessage(
+        content=[
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url":    f"data:image/jpeg;base64,{b64}",
+                    "detail": "low",
+                },
+            },
+            {
+                "type": "text",
+                "text": (
+                    "Please describe this image in detail. "
+                    "List: (1) main subject, (2) setting/background, "
+                    "(3) notable objects or text visible, "
+                    "(4) overall mood or context."
+                ),
+            },
+        ]
+    )
+
+    #invoke the vision model directly
+    response = vision_llm.invoke([message])
+
+    return response.content.strip()
 
 #----------------------------------END---------------------------------------
