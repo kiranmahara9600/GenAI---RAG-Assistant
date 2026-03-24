@@ -1,6 +1,7 @@
 # Telegram RAG Bot
 
 A Telegram chatbot that answers questions from your own private documents using Retrieval-Augmented Generation (RAG). Instead of manually searching through policies, FAQs, and guides, users simply type a question in Telegram and receive an instant, sourced answer powered by GPT.
+It also describes an image input sent by user and guides with how to send command around image input.
 
 ---
 
@@ -27,6 +28,7 @@ Large language models like GPT know public internet data — but they know nothi
 3. The most semantically similar document chunks are retrieved
 4. Those chunks are passed to GPT as context with query, which generates a grounded answer
 5. The answer is sent back to the user along with the source document name
+6. When user sends an image input it analyses and describes it using vision model from openai.
 
 This means the bot never hallucinates — it can only answer from what is in your documents.
 
@@ -41,7 +43,7 @@ This means the bot never hallucinates — it can only answer from what is in you
 | Query caching | Identical questions skip re-embedding - instant response |
 | Source attribution | Every answer shows which document it came from |
 | Persistent sessions | Conversation history survives bot restarts via SQLite |
-
+| `/image` |  Describe any photo using GPT-4o Vision|
 ---
 
 ## Models and APIs Used
@@ -316,6 +318,7 @@ All configuration lives in `.env` file and in constants at the top of each sourc
 
 ---
 
+`New added piece of image description uses open ai vision model to provide description of an image based on user input`
 
 **The bot only runs while your terminal is open.**
 
