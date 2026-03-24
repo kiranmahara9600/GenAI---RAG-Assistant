@@ -1,7 +1,7 @@
 """
 Bot Name: Emerald_bot
 Bot Desc: Telegram bot with RAG and conversation memory.
-File Desc: Telegram bot entry point - creates bot application, registers all commands (/ask, /help, /summarize, /clear),
+File Desc: Telegram bot entry point - creates bot application, registers all commands (/ask, /help, /summarize, /clear, /image),
 starts polling telegram for incoming messages then connects them to the RAG engine, LLM client, and session memory as per user ip.
 
 Commands
@@ -11,6 +11,7 @@ Commands
 /ask        -  user query against the knowledge base
 /summarize  -  summarise recent conversation
 /clear      -  clear session history
+/image      -  image ip guide
 
 Environment variables
 ---------------------
@@ -29,13 +30,13 @@ import sys
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, PhotoSize
 from telegram.ext import (Application,CommandHandler,MessageHandler,ContextTypes,filters)
 import asyncio
 
 #defined modules
 from src.rag_engine import index_documents, retrieve, build_context
-from src.llm_client import answer_with_context, summarise_history
+from src.llm_client import answer_with_context, summarise_history, describe_image
 from src.session import sessions
 
 
@@ -57,7 +58,7 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
-
+WAITING_FOR_IMAGE: set[int] = set()   # user IDs expecting to send a photo
 
 #------------------------------------------------------
 #COMMANDS
@@ -174,6 +175,55 @@ async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     sessions.clear(update.effective_user.id)
     await update.message.reply_text("Session history has been cleared.")
 
+#-------------------------------------------------------
+#IMAGE DESCRIPTION
+#-------------------------------------------------------
+
+#/image  -  to guide around img ip
+async def cmd_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    WAITING_FOR_IMAGE.add(user_id)
+    await update.message.reply_text(
+        "Please send your photo now (as an image, not a file)."
+    )
+
+#to handle image ip and generate description
+async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+
+    if user_id not in WAITING_FOR_IMAGE:
+        await update.message.reply_text(
+            "Send /image first if you'd like me to describe a photo."
+        )
+        return
+
+    WAITING_FOR_IMAGE.discard(user_id)
+
+    await update.message.reply_text("Analysing image…")
+
+    try:
+        #download highest resolution photo
+        photo: PhotoSize = update.message.photo[-1]
+        file = await photo.get_file()  #asks Telegram for a download URL for that specific file.
+        image_bytes = await file.download_as_bytearray()   #downloads the actual image data as raw bytes into memory 
+
+        #describe image
+        description = describe_image(image_bytes)
+
+        #save to session 
+        sessions.add_turn(user_id, "user", "sent an image")
+        sessions.add_turn(user_id, "assistant", description)
+
+        #reply to user 
+        await update.message.reply_text(
+            f"*Image description:*\n\n{description}",
+            parse_mode="Markdown"
+        )
+
+    except Exception as e:
+        logger.exception("Error in photo handler")
+        await update.message.reply_text(f"Could not process the image: {e}")
+
 
 #fallback for unexpected messages
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -206,8 +256,12 @@ async def  main() -> None:
     app.add_handler(CommandHandler("ask",       cmd_ask))
     app.add_handler(CommandHandler("summarize", cmd_summarize))
     app.add_handler(CommandHandler("clear",     cmd_clear))
+    app.add_handler(CommandHandler("image",     cmd_image))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_image))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     logger.info("Bot is running. Press Ctrl+C to stop.")
+
     #app.run_polling()  #bot connects to Telegram API   --- throwing event loop error
     async with app:
         await app.initialize()
