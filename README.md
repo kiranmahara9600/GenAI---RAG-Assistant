@@ -11,12 +11,10 @@ It also describes an image input sent by user and guides with how to send comman
 - [Models and APIs Used](#models-and-apis-used)
 - [System Design](#system-design)
 - [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
 - [Running Locally](#running-locally)
 - [Running with Docker Compose](#running-with-docker-compose)
 - [Bot Commands](#bot-commands)
 - [Knowledge Base](#knowledge-base)
-- [Configuration Reference](#configuration-reference)
 ---
 
 ## What It Does
@@ -64,14 +62,7 @@ This means the bot never hallucinates — it can only answer from what is in you
 
 ### Telegram API
 
-- **What it does:** Receives user messages and sends replies via the Telegram messaging platform
-- **Library:** `python-telegram-bot`
-- **Authentication:** Bot token from @BotFather
-
 ### Vector Storage — SQLite
-
-- **What it does:** Stores document chunk embeddings as BLOB columns, query cache, and user session history
-- **Why SQLite:** No server needed. Works on a laptop. Sufficient for hundreds of documents and thousands of queries. Zero infrastructure cost.
 
 ---
 
@@ -180,39 +171,15 @@ rag_bot/
 
 ---
 
-## Prerequisites
-
-- Python 3.11 or higher (3.12+ supported)
-- A Telegram account
-- An OpenAI account with API credits
-- Git (optional, for cloning)
-
----
-
 ## Running Locally
 
 ### Step 1 — Get a Telegram Bot Token
-
-```
-1. Open Telegram and search for @BotFather
-2. Send /newbot
-3. Choose a name: e.g. My RAG Bot
-4. Choose a username ending in 'bot': e.g. myragbot_bot
-5. Copy the token BotFather gives you:
-
-```
 
 ### Step 2 — Get an OpenAI API Key
 
 ### Step 3 — Configure environment
 
 Put the telegram token, open AI API token in .env
-
-It should look like below:
-
-TELEGRAM_BOT_TOKEN=110201543:***************************fSs4tVEMT1DRCn
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
-OPENAI_MODEL=gpt-4o-mini
 
 
 **Important:** Never commit  `.env` file to Git. It is already in `.gitignore`.
@@ -244,7 +211,7 @@ INFO | Bot is running. Press Ctrl+C to stop.
 
 ### Step 6 — Talk to bot on Telegram
 
-Search for your bot by username (e.g. `@EemeraldBot`) and start chatting.
+Search for your bot by username and start chatting.
 ## Bot Commands
 
 | Command | Description | Example |
@@ -301,20 +268,6 @@ Documents are split into 400-character chunks with 80-character overlap. This me
 ## Configuration Reference
 
 All configuration lives in `.env` file and in constants at the top of each source file.
-
-| Variable | Location | Default | Description |
-|---|---|---|---|
-| `TELEGRAM_BOT_TOKEN` | `.env` | — | Required. From @BotFather |
-| `OPENAI_API_KEY` | `.env` | — | Required. From platform.openai.com |
-| `OPENAI_MODEL` | `.env` | `gpt-4o-mini` | OpenAI model for answer generation |
-| `EMBED_MODEL` | `rag_engine.py` | `all-MiniLM-L6-v2` | Local embedding model |
-| `CHUNK_SIZE` | `rag_engine.py` | `400` | Characters per chunk |
-| `CHUNK_OVERLAP` | `rag_engine.py` | `80` | Overlap between chunks |
-| `TOP_K` | `rag_engine.py` | `3` | Number of chunks retrieved per query |
-| `DB_PATH` | `rag_engine.py` | `rag_store.db` | SQLite database file path |
-| `MAX_TOKENS` | `llm_client.py` | `600` | Max tokens in LLM response |
-| `TEMPERATURE` | `llm_client.py` | `0.3` | LLM creativity (0=deterministic, 1=creative) |
-| `HISTORY_LIMIT` | `session.py` | `6` | Max conversation turns stored per user |
 
 ---
 
